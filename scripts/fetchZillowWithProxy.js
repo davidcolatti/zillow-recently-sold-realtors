@@ -1,5 +1,8 @@
 import fetch from "node-fetch";
 import proxyAgent from "proxy-agent";
+import { config } from "dotenv";
+
+config();
 
 const agent = proxyAgent(process.env.PROXY_URL);
 
