@@ -26,8 +26,6 @@ for (let i = 0; i < data.length; i++) {
       lastName,
     })) ?? {};
 
-  console.log(`Scraped ${property.buyerAgentName}`);
-
   data[i].phoneNumber = phoneNumber;
   data[i].emailAddress = emailAddress;
   data[i].officeBusinessName = officeBusinessName;
@@ -35,6 +33,6 @@ for (let i = 0; i < data.length; i++) {
   arrayToCsvFile({
     data,
     filePath: "./output.csv",
-    callback: () => console.log(`Scrape completed`),
+    callback: () => console.log(`Scraped ${buyerAgentName}`),
   });
 }
