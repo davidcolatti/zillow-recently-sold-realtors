@@ -1,14 +1,16 @@
 import { spawn } from "child_process";
 
 export default async function ({ state, firstName, lastName }) {
+  const payload = JSON.stringify({
+    officeStreetCountry: "US",
+    officeStreetState: state,
+    memberFirstName: firstName,
+    memberLastName: lastName,
+  });
+
   const process = spawn("python3", [
     "./scripts/fetch_realtor_data.py",
-    JSON.stringify({
-      officeStreetCountry: "US",
-      officeStreetState: state,
-      memberFirstName: firstName,
-      memberLastName: lastName,
-    }),
+    payload,
   ]);
 
   const response = await new Promise((resolve, reject) => {
@@ -18,11 +20,15 @@ export default async function ({ state, firstName, lastName }) {
     process.stderr.on("data", reject);
   });
 
-  if (!response || response === "None") {
-    return null;
-  }
-
   try {
+    if (!response || response === "None") {
+      throw new Error("No realtor data found for");
+    }
+
+    if (response === "Rejected") {
+      throw new Error("Blocked request");
+    }
+
     const json = JSON.parse(response);
 
     return {
@@ -31,7 +37,15 @@ export default async function ({ state, firstName, lastName }) {
       officeBusinessName: json.Office.OfficeBusinessName,
     };
   } catch (error) {
-    console.log(`No realtor data found for ${{ firstName, lastName, state }}`);
+    console.log(
+      `${JSON.stringify({
+        firstName,
+        lastName,
+        state,
+      })} | `,
+      error.message
+    );
+
     return {
       phoneNumber: "",
       emailAddress: "",
