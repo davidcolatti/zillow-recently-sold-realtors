@@ -8,6 +8,8 @@ export default async function ({ state, firstName, lastName }) {
     memberLastName: lastName,
   });
 
+  console.log(`Sending payload ${payload}`);
+
   const process = spawn("python3", [
     "./scripts/fetch_realtor_data.py",
     payload,
