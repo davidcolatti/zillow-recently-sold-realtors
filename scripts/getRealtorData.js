@@ -1,57 +1,54 @@
-import { spawn } from "child_process";
+import {
+  executeCommand,
+  getRealtorCommand,
+  getSearchCommand,
+} from "./commands.js";
+
+const sleep = () => new Promise((resolve) => setTimeout(() => resolve(), 5000));
 
 export default async function ({ state, firstName, lastName }) {
-  const payload = JSON.stringify({
-    officeStreetCountry: "US",
-    officeStreetState: state,
-    memberFirstName: firstName,
-    memberLastName: lastName,
-  });
+  let attemptCount = 1;
+  while (attemptCount <= 5) {
+    try {
+      const response = await executeCommand(
+        getSearchCommand({ state, firstName, lastName })
+      );
 
-  console.log(`Sending payload ${payload}`);
+      if (!response || response?.length === 0) {
+        throw new Error(`No realtor found from search`);
+      }
 
-  const process = spawn("python3", [
-    "./scripts/fetch_realtor_data.py",
-    payload,
-  ]);
+      const [{ PersonId: personId }] = response;
 
-  const response = await new Promise((resolve, reject) => {
-    process.stdout.on("data", (data) => {
-      resolve(data.toString().trim()); // <------------ by default converts to utf-8
-    });
-    process.stderr.on("data", reject);
-  });
+      if (!personId) {
+        throw new Error("No personId is found");
+      }
 
-  try {
-    if (!response || response === "None") {
-      throw new Error("No realtor data found for");
+      const { PreferredPhone, BusinessEmailAddress, Office } =
+        await executeCommand(getRealtorCommand({ personId, lastName }));
+
+      return {
+        phoneNumber: PreferredPhone,
+        emailAddress: BusinessEmailAddress,
+        officeBusinessName: Office.OfficeBusinessName,
+      };
+    } catch (error) {
+      console.log(
+        `${JSON.stringify({
+          firstName,
+          lastName,
+          state,
+        })} | `,
+        error.message
+      );
     }
 
-    if (response === "Rejected") {
-      throw new Error("Blocked request");
-    }
-
-    const json = JSON.parse(response);
-
-    return {
-      phoneNumber: json.PreferredPhone,
-      emailAddress: json.BusinessEmailAddress,
-      officeBusinessName: json.Office.OfficeBusinessName,
-    };
-  } catch (error) {
     console.log(
-      `${JSON.stringify({
-        firstName,
-        lastName,
-        state,
-      })} | `,
-      error.message
+      `Retrying, sleeping for 5 seconds | attempt count ${attemptCount} | ${JSON.stringify(
+        { state, firstName, lastName }
+      )}`
     );
-
-    return {
-      phoneNumber: "",
-      emailAddress: "",
-      officeBusinessName: "",
-    };
+    await sleep();
+    attemptCount++;
   }
 }

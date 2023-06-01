@@ -4,6 +4,7 @@
     "cheerio": "^1.0.0-rc.12",
     "csv-to-and-from-array": "^0.1.0",
     "dotenv": "^16.0.3",
+    "lodash": "^4.17.21",
     "node-fetch": "^3.3.1",
     "proxy-agent": "^5.0.0",
     "puppeteer": "^20.2.1"

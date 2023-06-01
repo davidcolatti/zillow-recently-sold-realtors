@@ -5,16 +5,29 @@ import getPropertyByZpid from "./scripts/getPropertyByZpid.js";
 import getRecentlySoldHomes from "./scripts/getRecentlySoldHomes.js";
 
 // Find list of recently sold homes by using zillow url slug (check their website)
-const zpids = await getRecentlySoldHomes("san-diego-ca");
+const homes = await getRecentlySoldHomes("san-diego-ca");
 
-console.log(`Total ZPIDs found ${zpids.length}`);
+console.log(homes);
+console.log(`Total homes found ${homes.length}`);
 
 // Use zpids that were scraped from recently sold homes to get property data
-const response = await Promise.all(zpids.map(getPropertyByZpid));
-const data = response.filter(Boolean);
+const response = await Promise.all(
+  homes.map(async (home) => {
+    const buyerData = await getPropertyByZpid(home.zpid);
+    return {
+      ...home,
+      ...buyerData,
+    };
+  })
+);
 
-for (let i = 0; i < data.length; i++) {
-  const { state, buyerAgentName } = data[i];
+const buyers = response.filter((r) => !!r.buyerAgentName);
+
+console.log(buyers);
+console.log(`Total buyers found ${buyers.length}`);
+
+for (let i = 0; i < buyers.length; i++) {
+  const { state, buyerAgentName } = buyers[i];
   const splitname = buyerAgentName.split(" ");
   const firstName = splitname[0];
   const lastName = splitname[splitname.length - 1];
@@ -26,12 +39,12 @@ for (let i = 0; i < data.length; i++) {
       lastName,
     })) ?? {};
 
-  data[i].phoneNumber = phoneNumber;
-  data[i].emailAddress = emailAddress;
-  data[i].officeBusinessName = officeBusinessName;
+  buyers[i].phoneNumber = phoneNumber;
+  buyers[i].emailAddress = emailAddress;
+  buyers[i].officeBusinessName = officeBusinessName;
 
   arrayToCsvFile({
-    data,
+    data: buyers,
     filePath: "./output.csv",
     callback: () => console.log(`Scraped ${buyerAgentName}`),
   });

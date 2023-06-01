@@ -2,4 +2,4 @@ node_modules
 .DS_Store
 test.js
 .env
-scripts/fetch_realtor_data.py
+scripts/commands.js

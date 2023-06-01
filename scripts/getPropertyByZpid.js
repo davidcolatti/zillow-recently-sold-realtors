@@ -2,7 +2,8 @@ import { load } from "cheerio";
 import fetchZillowWithProxy from "./fetchZillowWithProxy.js";
 
 export default async function (zpid) {
-  while (true) {
+  let attemptCount = 1;
+  while (attemptCount <= 20) {
     const zillowUrl = `https://www.zillow.com/homedetails/${zpid}_zpid`;
 
     try {
@@ -23,14 +24,11 @@ export default async function (zpid) {
           JSON.parse(nextState.text()).props.pageProps.gdpClientCache
         )[`NotForSaleShopperPlatformFullRenderQuery{"zpid":${zpid}}`];
 
-        const { attributionInfo, city, state, zipcode, streetAddress } =
-          property;
-
         const {
           buyerAgentName,
           buyerBrokerageName,
           buyerAgentMemberStateLicense,
-        } = attributionInfo;
+        } = property.attributionInfo;
 
         if (
           !(buyerAgentName || buyerAgentName || buyerAgentMemberStateLicense)
@@ -39,12 +37,6 @@ export default async function (zpid) {
         }
 
         return {
-          zillowUrl,
-          zpid,
-          streetAddress,
-          city,
-          state,
-          zipcode,
           buyerAgentName,
           buyerBrokerageName,
           buyerAgentMemberStateLicense,
@@ -59,5 +51,7 @@ export default async function (zpid) {
         message: error?.message,
       });
     }
+
+    attemptCount++;
   }
 }
