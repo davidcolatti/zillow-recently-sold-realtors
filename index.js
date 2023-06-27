@@ -1,5 +1,4 @@
 import { arrayToCsvFile } from "csv-to-and-from-array";
-
 import getRealtorData from "./scripts/getRealtorData.js";
 import getPropertyByZpid from "./scripts/getPropertyByZpid.js";
 import getRecentlySoldHomes from "./scripts/getRecentlySoldHomes.js";
@@ -13,6 +12,8 @@ console.log(`Total homes found ${homes.length}`);
 // Use zpids that were scraped from recently sold homes to get property data
 const response = await Promise.all(
   homes.map(async (home) => {
+    if (!home.zpid) return {};
+
     const buyerData = await getPropertyByZpid(home.zpid);
     return {
       ...home,

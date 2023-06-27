@@ -2,10 +2,7 @@ import { load } from "cheerio";
 import fetchZillowWithProxy from "./fetchZillowWithProxy.js";
 import _ from "lodash";
 
-// const TOTAL_PAGE_COUNT = 20;
-const TOTAL_PAGE_COUNT = 1;
-
-const getZpids = async (cityStateSlug, page) => {
+const getZpids = async (cityStateSlug, page, totalPages) => {
   while (true) {
     // to attempt to get page data
     const queryParams = JSON.stringify({
@@ -58,7 +55,9 @@ const getZpids = async (cityStateSlug, page) => {
 
     console.log({
       zillowUrl,
-      message: `getting recently sold homes for page ${page} / ${TOTAL_PAGE_COUNT}`,
+      message: `getting recently sold homes for page ${page} / ${
+        totalPages ?? 1
+      }`,
     });
 
     try {
@@ -97,20 +96,23 @@ const getZpids = async (cityStateSlug, page) => {
       const jsonText = scriptText.replace(/^\<\!\-\-(.*)\-\-\>/g, "$1");
 
       if (jsonText) {
-        const { listResults } = JSON.parse(jsonText)?.cat1?.searchResults ?? {};
+        const { searchList, searchResults } = JSON.parse(jsonText)?.cat1 ?? {};
 
-        return listResults.map((lr) => {
-          return {
-            zpid: lr.zpid,
-            zillowUrl: lr.detailUrl,
-            street: lr.addressStreet,
-            city: lr.addressCity,
-            state: lr.addressState,
-            zipCode: lr.addressZipcode,
-            status: lr.variableData.type,
-            soldDate: lr.variableData.text,
-          };
-        });
+        return {
+          totalPages: searchList.totalPages,
+          results: searchResults?.listResults.map((lr) => {
+            return {
+              zpid: lr.zpid,
+              zillowUrl: lr.detailUrl,
+              street: lr.addressStreet,
+              city: lr.addressCity,
+              state: lr.addressState,
+              zipCode: lr.addressZipcode,
+              status: lr.variableData.type,
+              soldDate: lr.variableData.text,
+            };
+          }),
+        };
       }
     } catch (error) {
       console.error({
@@ -122,11 +124,21 @@ const getZpids = async (cityStateSlug, page) => {
 };
 
 export default async function (cityStateSlug) {
-  const promises = new Array(TOTAL_PAGE_COUNT).fill(null).map((_, index) => {
-    return getZpids(cityStateSlug, index + 1);
+  const { totalPages, results: firstPageResults } = await getZpids(
+    cityStateSlug,
+    1
+  );
+
+  const promises = new Array(totalPages).fill(null).map(async (_, index) => {
+    if (index === 0) return null;
+    const { results } = await getZpids(cityStateSlug, index + 1, totalPages);
+    return results;
   });
 
   const responses = await Promise.all(promises);
-  const filteredData = responses.flat().filter(Boolean);
+  const cleanedResponses = responses.filter(Boolean);
+
+  const filteredData = [firstPageResults, cleanedResponses].flat();
+
   return _.uniqBy(filteredData, "zpid");
 }
